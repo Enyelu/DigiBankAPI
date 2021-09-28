@@ -9,6 +9,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Models;
+using Repository.Implementation;
+using Repository.Interface;
 using Repository.Interfaces;
 using Utilities.TokenGeneration;
 
@@ -27,6 +29,7 @@ namespace DigiBank
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddScoped<ITokenGenerator, TokenGenerator>();
+            services.AddScoped<IBankAccountRepo, BankAccountRepo>();
             services.AddScoped<IUserRepo, UserRepo>();
             services.AddScoped<IUserLogic, UserLogic>();
             services.AddScoped<IBankAccountLogic, BankAccountLogic>();
@@ -35,8 +38,6 @@ namespace DigiBank
 
             services.AddIdentity<User, IdentityRole>().AddEntityFrameworkStores<DigiBankContext>().AddDefaultTokenProviders();
             services.AddScoped<IUserLogic, UserLogic>();
-
-            
 
             services.AddDbContext<DigiBankContext>(options => options.UseSqlite(Configuration.GetConnectionString("DefaultConnections")));
             services.Configure<IdentityOptions>(options =>

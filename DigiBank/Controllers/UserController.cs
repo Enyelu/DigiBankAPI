@@ -56,15 +56,15 @@ namespace DigiBank.Controllers
 
         [HttpPost]
         [Route("api/[controller]/Address")] 
-        [Authorize(Role ="Regular")]
+        [Authorize(Roles = "Regular")]
         public IActionResult Address(UserAddressDTO userAddressDTO)
         {
-            var loggedInUser = HttpContext.User.FindFirst(x => x.Type == ClaimTypes.NameIdentifier).Value;
 
-            userAddressDTO.LoggedInUserId = loggedInUser;
             try
             {
-                return Created("Address created successfully", _userLogic.UserAddressAsync(userAddressDTO));
+                string loggedInUserId = HttpContext.User.FindFirst(x => x.Type == ClaimTypes.NameIdentifier).Value;
+
+                return Created("Address created successfully", _userLogic.UserAddressAsync((userAddressDTO), loggedInUserId));
             }
             catch (Exception e)
             {
