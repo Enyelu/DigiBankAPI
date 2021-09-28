@@ -57,8 +57,9 @@ namespace BusinessLogic.Implementations
             }
             return null;
         }
-        public async Task<bool> AddAddress(UserAddressDTO userAddressDTO, User loggedInUser)
+        public async Task<bool> AddAddress(UserAddressDTO userAddressDTO, string loggedInUserId)
         {
+            User loggedInUser = await _userManager.FindByIdAsync(loggedInUserId);
             var AddressToRegister = UserMapping.Address(userAddressDTO);
             await _digiBankContext.UsersAddress.AddAsync(AddressToRegister);
           
@@ -70,8 +71,9 @@ namespace BusinessLogic.Implementations
             return false;
         }
 
-        public async Task<bool> UpdateUserAsync(User loggedInUser)
+        public async Task<bool> UpdateUserAsync(string loggedInUserId)
         {
+            User loggedInUser = await _userManager.FindByIdAsync(loggedInUserId);
             var result = await _userManager.UpdateAsync(loggedInUser);
             if(result != null)
             {

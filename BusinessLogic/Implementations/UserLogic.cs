@@ -67,7 +67,7 @@ namespace BusinessLogic.Implementations
         }
 
         //User adds address after registration and login in.
-        public async Task<AddressResponseDTO> UserAddressAsync(UserAddressDTO userAddressDTO, User logedInUser )
+        public async Task<AddressResponseDTO> UserAddressAsync(UserAddressDTO userAddressDTO, string logedInUser )
         {
             if (logedInUser != null)
             {

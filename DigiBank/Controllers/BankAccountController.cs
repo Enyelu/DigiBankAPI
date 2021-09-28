@@ -1,6 +1,7 @@
 ﻿using BusinessLogic.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Security.Claims;
 
 namespace DigiBank.Controllers
 {
@@ -8,9 +9,11 @@ namespace DigiBank.Controllers
     public class BankAccountController : ControllerBase
     {
         private readonly IBankAccountLogic _bankAccountLogic;
-        public BankAccountController(IBankAccountLogic bankAccountLogic)
+        private readonly ITransactionLogic _transactionLogic;
+        public BankAccountController(IBankAccountLogic bankAccountLogic, ITransactionLogic transactionLogic)
         {
             _bankAccountLogic = bankAccountLogic;
+            _transactionLogic = transactionLogic;
         }
 
         [HttpGet]
@@ -19,7 +22,8 @@ namespace DigiBank.Controllers
         {
             try
             {
-                return Ok(_bankAccountLogic.GetAccountBalance());
+                var loggedInUserId = HttpContext.User.FindFirst(x => x.Type == ClaimTypes.NameIdentifier).Value;
+                return Ok(_bankAccountLogic.GetAccountBalance(loggedInUserId));
             }
             catch (ArgumentException e)
             {
@@ -55,7 +59,8 @@ namespace DigiBank.Controllers
         {
             try
             {
-                return Ok(_bankAccountLogic.GetAccountStatement());
+                var loggedInUserId = HttpContext.User.FindFirst(x => x.Type == ClaimTypes.NameIdentifier).Value;
+                return Ok(_transactionLogic.GetTransactionsStatement(loggedInUserId));
             }
             catch (ArgumentException e)
             {
@@ -73,7 +78,7 @@ namespace DigiBank.Controllers
         {
             try
             {
-                return Ok(_bankAccountLogic.AdminGetAccountStatement(userAccountNumber));
+                return Ok(_transactionLogic.AdminGetTransactionsStatement(userAccountNumber));
             }
             catch (ArgumentException e)
             {
