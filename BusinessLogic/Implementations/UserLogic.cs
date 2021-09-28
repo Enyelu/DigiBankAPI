@@ -2,6 +2,7 @@
 using DtoMappings.DTO;
 using DtoMappings.Mappings;
 using Models;
+using Repository.Interfaces;
 using System;
 using System.Threading.Tasks;
 using Utilities.TokenGeneration;
@@ -13,12 +14,14 @@ namespace BusinessLogic.Implementations
         private readonly ITransactionLogic _transactionLogic;
         private readonly ITokenGenerator _tokenGenerator;
         private readonly IUserRepo _userRepo;
+        private readonly IBankAccountLogic _bankAccountLogic;
      
-        public UserLogic(ITransactionLogic transactionLogic, ITokenGenerator tokenGenerator, IUserRepo userRepo)
+        public UserLogic(ITransactionLogic transactionLogic, ITokenGenerator tokenGenerator, IUserRepo userRepo, IBankAccountLogic bankAccountLogic)
         {
             _transactionLogic = transactionLogic;
             _tokenGenerator = tokenGenerator;
             _userRepo = userRepo;
+            _bankAccountLogic = bankAccountLogic;
         }
 
         public async Task<RegisterResponseDTO> RegisterUserAsync(RegisterDTO registerDTO)
@@ -39,8 +42,8 @@ namespace BusinessLogic.Implementations
                 var bankAccount = BankAccountMapping.CreateAccount(registerDTO);
                 bankAccount.User = user;
 
-                await _userRepo.AddBankAccount(bankAccount);
-                await _userRepo.SaveChanges();
+                await _bankAccountLogic.AddBankAccount(bankAccount);
+                await _transactionLogic.SaveDbChanges();
 
                 var transaction = new AdminTransactionDTO
                 {
@@ -64,19 +67,17 @@ namespace BusinessLogic.Implementations
         }
 
         //User adds address after registration and login in.
-        public async Task<AddressResponseDTO> UserAddressAsync(UserAddressDTO userAddressDTO)
+        public async Task<AddressResponseDTO> UserAddressAsync(UserAddressDTO userAddressDTO, User logedInUser )
         {
-            User logedInUser = await _userRepo.GetLoggedInUser(userAddressDTO);
-
             if (logedInUser != null)
             {
-               var addAddress = await _userRepo.AddAddress(userAddressDTO);
+               var addAddress = await _userRepo.AddAddress(userAddressDTO, logedInUser);
                 if(addAddress == true)
                 {
-                   var saveAddress = await _userRepo.SaveChanges();
+                   var saveAddress = await _transactionLogic.SaveDbChanges();
                     if(saveAddress == true)
                     {
-                        var createUserAddress = await _userRepo.UpdateUserAsync(userAddressDTO);
+                        var createUserAddress = await _userRepo.UpdateUserAsync(logedInUser);
                         if(createUserAddress == true)
                         {
                             return new AddressResponseDTO

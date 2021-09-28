@@ -1,5 +1,8 @@
 ﻿using BusinessLogic.Interfaces;
 using DtoMappings.DTO;
+using Models;
+using Repository.Interface;
+using Repository.Interfaces;
 using System;
 using System.Threading.Tasks;
 
@@ -8,15 +11,17 @@ namespace BusinessLogic.Implementations
 {
     public class TransactionLogic: ITransactionLogic
     {
-        private readonly ITransactRepo _transact;
-        public TransactionLogic(ITransactRepo transact)
+        private readonly ITransactRepo _transactRepo;
+        private readonly IBankAccountRepo _bankAccountRepo;
+        public TransactionLogic(ITransactRepo transactRepo, IBankAccountRepo bankAccountRepo)
         {
-            _transact = transact;
+            _transactRepo = transactRepo;
+            _bankAccountRepo = bankAccountRepo;
         }
        
         public bool Transfer(TransactionDepositDTO transactionDTO)
         {
-            var response = _transact.GetAccounts(transactionDTO);
+            var response = _bankAccountRepo.GetAccounts(transactionDTO);
             if (transactionDTO.AmountTransacted >= 1 && transactionDTO.AmountTransacted <= 1000000)
             {
                 if (response.Depositor.AccountNumber != null)
@@ -27,7 +32,7 @@ namespace BusinessLogic.Implementations
                         {
                             response.Depositor.AccountBalance = response.Depositor.AccountBalance - transactionDTO.AmountTransacted;
                             response.Receiver.AccountBalance = response.Depositor.AccountBalance + transactionDTO.AmountTransacted;
-                            _transact.SaveChanges();
+                            _transactRepo.SaveChanges();
 
                             Models.Transaction transaction = new Models.Transaction
                             {
@@ -42,8 +47,8 @@ namespace BusinessLogic.Implementations
                                 TransactionType = "Debit",
                                 TransactionStatus = true
                             };
-                            _transact.AddTransaction(transaction);
-                            _transact.SaveChanges();
+                            _transactRepo.AddTransaction(transaction);
+                            _transactRepo.SaveChanges();
 
                         }
                         throw new ArgumentException("Receivers account number is invalid");
@@ -59,25 +64,25 @@ namespace BusinessLogic.Implementations
         {
             if (adminTransactionDTO.AmountTransacted >= 1 && adminTransactionDTO.AmountTransacted <= 1000000)
             {
-                var response = _transact.GetAccountWithAccountNumber(adminTransactionDTO);
+                var account = _bankAccountRepo.GetAccountWithAccountNumber(adminTransactionDTO.AccountNumber);
 
-                if (response.Depositor.AccountNumber != null)
+                if (account.AccountNumber != null)
                 {
-                    response.Depositor.AccountBalance = response.Depositor .AccountBalance + adminTransactionDTO.AmountTransacted;
-                    await _transact.SaveChanges();
+                    account.AccountBalance = account.AccountBalance + adminTransactionDTO.AmountTransacted;
+                    await _transactRepo.SaveChanges();
 
-                     var transaction =  new Models.Transaction
+                     var transaction =  new Transaction
                      {
                             Id = Guid.NewGuid().ToString(),
-                            DepositorAccountId = response.Depositor.Id,
+                            DepositorAccountId = account.Id,
                             DateCreated = DateTime.Now,
                             AmountTransacted = adminTransactionDTO.AmountTransacted,
                             TransactionType = "Credit",
                             TransactionStatus = true
                      };
 
-                     await _transact.AddTransaction(transaction);
-                     await _transact.SaveChanges();
+                     await _transactRepo.AddTransaction(transaction);
+                     await _transactRepo.SaveChanges();
                     return true;
                 }
                 return false;
@@ -87,29 +92,29 @@ namespace BusinessLogic.Implementations
         
         public bool Withdrawal(TransactionWithdrawalDTO transactionDTO)   
         {
-           var response =  _transact.GetAccountWithId(transactionDTO);
+           var account = _bankAccountRepo.GetAccountWithUserId(transactionDTO.LoggedInUserId);
 
-            if (response.Depositor.AccountNumber != null)
+            if (account.AccountNumber != null)
             {
                 if (transactionDTO.AmountTransacted >= 1 && transactionDTO.AmountTransacted <= 1000000)
                 {
-                    if ((response.Depositor.AccountBalance - transactionDTO.AmountTransacted) > 500)
+                    if ((account.AccountBalance - transactionDTO.AmountTransacted) > 500)
                     {
-                        response.Depositor.AccountBalance = response.Depositor.AccountBalance - transactionDTO.AmountTransacted;
-                        _transact.SaveChanges();
+                        account.AccountBalance = account.AccountBalance - transactionDTO.AmountTransacted;
+                        _transactRepo.SaveChanges();
 
                         if (true)
                         {
                             var transaction =  new Models.Transaction
                             {
                                 Id = Guid.NewGuid().ToString(),
-                                DepositorAccountNumber = response.Depositor.AccountNumber,
+                                DepositorAccountNumber = account.AccountNumber,
                                 AmountTransacted = transactionDTO.AmountTransacted,
                                 TransactionType = "Debit/Withdrawal",
                                 DateCreated = DateTime.Now,
                                 TransactionStatus = true
                             };
-                            _transact.SaveChanges();
+                            _transactRepo.SaveChanges();
                         }
                         throw new Exception("Transaction was not successful");
                     }
@@ -122,30 +127,30 @@ namespace BusinessLogic.Implementations
 
         public bool AdminWithdrawal(AdminTransactionDTO adminTransactionDTO)
         {
-            var response = _transact.GetAccountWithAccountNumber(adminTransactionDTO);
+            var account = _bankAccountRepo.GetAccountWithAccountNumber(adminTransactionDTO.AccountNumber);
 
             
-            if (response.Depositor.AccountNumber != null)
+            if (account.AccountNumber != null)
             {
                 if (adminTransactionDTO.AmountTransacted >= 1)
                 {
-                    if ((response.Depositor.AccountBalance - adminTransactionDTO.AmountTransacted) > 500)
+                    if ((account.AccountBalance - adminTransactionDTO.AmountTransacted) > 500)
                     {
-                        response.Depositor.AccountBalance = response.Depositor.AccountBalance - adminTransactionDTO.AmountTransacted;
-                        _transact.SaveChanges();
+                        account.AccountBalance = account.AccountBalance - adminTransactionDTO.AmountTransacted;
+                        _transactRepo.SaveChanges();
 
                         if (true)
                         {
                             var transaction = new Models.Transaction
                             {
                                 Id = Guid.NewGuid().ToString(),
-                                DepositorAccountNumber = response.Depositor.AccountNumber,
+                                DepositorAccountNumber = account.AccountNumber,
                                 AmountTransacted = adminTransactionDTO.AmountTransacted,
                                 TransactionType = "Debit/Withdrawal",
                                 DateCreated = DateTime.Now,
                                 TransactionStatus = true
                             };
-                            _transact.SaveChanges();
+                            _transactRepo.SaveChanges();
                         }
                         throw new Exception("Transaction was not successful");
                     }
@@ -154,6 +159,59 @@ namespace BusinessLogic.Implementations
                 throw new ArgumentOutOfRangeException("Amount too small or too large");
             }
             throw new ArgumentException("Account not found");
+        }
+
+        public AccountStatementResponseDTO GetTransactionsStatement(string loggedInUserId)
+        {
+            var transactions = _transactRepo.GetTransactionByUserId(loggedInUserId);
+
+            if (transactions != null)
+            {
+                foreach (var transaction in transactions)
+                {
+                    return new AccountStatementResponseDTO
+                    {
+                        AmountTransacted = transaction.AmountTransacted,
+                        DepositorAccountBalance = transaction.DepositorAccountBalance,
+                        TransactionType = transaction.TransactionType,
+                        Narration = transaction.TransactionType,
+                        DateCreated = transaction.DateCreated
+                    };
+                }
+            }
+            throw new ArgumentException("Error while fetching data");
+        }
+        
+        public AccountStatementResponseDTO AdminGetTransactionsStatement(string userAccountNumber)
+        {
+
+            var transactions = _transactRepo.GetTransactionByAccountNumber(userAccountNumber);
+
+            if (transactions != null)
+            {
+                foreach (var transaction in transactions)
+                {
+                    return new AccountStatementResponseDTO
+                    {
+                        AmountTransacted = transaction.AmountTransacted,
+                        DepositorAccountBalance = transaction.DepositorAccountBalance,
+                        TransactionType = transaction.TransactionType,
+                        Narration = transaction.TransactionType,
+                        DateCreated = transaction.DateCreated
+                    };
+                }
+            }
+            throw new ArgumentException("Account not found");
+        }
+
+        public async Task<bool> SaveDbChanges()
+        {
+            var saveResult = await _transactRepo.SaveChanges();
+            if (saveResult)
+            {
+                return true;
+            }
+            return false;
         }
     }
 }
