@@ -1,13 +1,10 @@
-﻿using BusinessLogic.Interfaces;
-using DataBaseConnections;
+﻿using DataBaseConnections;
 using DtoMappings.DTO;
 using DtoMappings.Mappings;
 using Microsoft.AspNetCore.Identity;
 using Models;
+using Repository.Interfaces;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Implementations
@@ -50,25 +47,6 @@ namespace BusinessLogic.Implementations
             }
             return null;
         }
-        public async Task<bool> SaveChanges()
-        {
-            var response = await _digiBankContext.SaveChangesAsync();
-            if (response >= 1)
-            {
-                return true;
-            }
-            return false;
-        }
-        public async Task<bool> AddBankAccount(BankAccount bankAccount)
-        {
-            var addAccount = await _digiBankContext.BankAccounts.AddAsync(bankAccount);
-                return true;
-        }
-        public async Task<User> GetLoggedInUser(UserAddressDTO userAddressDTO)
-        {
-            User logedInUser = await _userManager.FindByIdAsync(userAddressDTO.LoggedInUserId);
-            return logedInUser;
-        }
 
         public async Task<User> GetUserByEmail(LoginDTO loginDTO)
         {
@@ -79,22 +57,27 @@ namespace BusinessLogic.Implementations
             }
             return null;
         }
-        public async Task<bool> AddAddress(UserAddressDTO userAddressDTO)
+        public async Task<bool> AddAddress(UserAddressDTO userAddressDTO, User loggedInUser)
         {
             var AddressToRegister = UserMapping.Address(userAddressDTO);
             await _digiBankContext.UsersAddress.AddAsync(AddressToRegister);
           
-            var loggedInUser = await GetLoggedInUser(userAddressDTO);
             loggedInUser.UserAddress = AddressToRegister;
-
-            return true;
+            if(loggedInUser.UserAddress != null)
+            {
+                return true;
+            }
+            return false;
         }
 
-        public async Task<bool> UpdateUserAsync(UserAddressDTO userAddressDTO)
+        public async Task<bool> UpdateUserAsync(User loggedInUser)
         {
-            var loggedInUser = await GetLoggedInUser(userAddressDTO);
-            await _userManager.UpdateAsync(loggedInUser);
-            return true;
+            var result = await _userManager.UpdateAsync(loggedInUser);
+            if(result != null)
+            {
+                return true;
+            }
+            return false;
         }
         public async Task<bool> ReadPassword(User user, LoginDTO loginDTO)
         {
